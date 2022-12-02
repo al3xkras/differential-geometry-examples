@@ -1,0 +1,21 @@
+/Lab3/**_decoded.txt
+**/text_out.txt
+**/__pycache__
+*.pdf
+/tmp
+**/.ipynb_checkpoints
+/Lab2/*.txt
+HELP.md
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### IntelliJ IDEA ###
+**/.idea
+*.iws
+*.iml
+*.ipr
+
+### VS Code ###
+.vscode/
