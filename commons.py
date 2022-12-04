@@ -54,10 +54,10 @@ class Surface:
         return tuple(x.subs(self.u,u).subs(self.v,v).evalf() for x in self.e)
     
     def I(self,du,dv):
-        return self.E*du*du + 2*self.F*du*dv + self.G*dv*dv
+        return (self.E*du*du + 2*self.F*du*dv + self.G*dv*dv).simplify()
     
     def II(self,du,dv):
-        return self.L*du*du + 2*self.M*du*dv + self.N*dv*dv
+        return (self.L*du*du + 2*self.M*du*dv + self.N*dv*dv).simplify()
     
     def III(self,du,dv):
         return (-self.K*self.I(du,dv)+2*self.H*self.II(du,dv)).simplify()
@@ -159,7 +159,7 @@ class MethodOfOrthonormalFrames:
     def calc_thetas(self):
         A = self.calc_mat_A()
         du,dv=self.du,self.dv
-        return [A[0][0]*du+A[0][1]*dv,A[1][0]*du+A[1][1]*dv]
+        return [A[0,0]*du+A[0,1]*dv,A[1,0]*du+A[1,1]*dv]
     
     def calc_mat_B(self):
         A = self.calc_mat_A()
@@ -176,4 +176,44 @@ class MethodOfOrthonormalFrames:
             [b[0],b[1]],
             [b[2],b[3]]
         ])
+    
+    
+    
+class StructureEquations:
+    def __init__(self,surface):
+        self.surface=surface
+        self.u=surface.u
+        self.v=surface.v
+        self.du,self.dv=sp.symbols("du,dv")
+        self.ort=MethodOfOrthonormalFrames(self.surface)
+        self.W_a,self.W_b = self.ort.calc_mat_W()
+        self.A = self.ort.calc_mat_A()
+        #A <=> the exterior product
+        self.duAdv = sp.symbols("duAdv")
+        
+    def d_theta(self,num):
+        """
+        Using the 1st structure equation:
+        d(theta_i) = theta_j A w_i_1 + theta_j A w_i_2 
+        where j=(i+1)%2 and A denotes the exterior product
+        """
+        assert num in [1,2]
+        i=num-1
+        i0=num%2
+        m=sp.Matrix([
+            [self.A[i,0],self.A[i,1]],
+            [self.W_a[i0,i],self.W_b[i0,i]]
+        ])
+        return m.det()*self.duAdv
+    
+    def d_w21(self):
+        """
+        Using the 2nd structure equation:
+        (fundamental equation 1 of the theory of surfaces):
+        d(w_2_1) = K * theta_1 A theta2
+        where A denotes the exterior product
+        """
+        return self.surface.K*self.A.det()*self.duAdv
+    
+        
     
