@@ -38,12 +38,29 @@ class Surface:
         self.H = (E*N+G*L-2*F*M)/(2*E*G-2*F**2)
         self.K=self.K.simplify()
         self.H=self.H.simplify()
+        k1,k2=sp.symbols("k1,k2")
+        
+        k1k2=sp.solve([
+            k1*k2-self.K,
+            2*(k1+k2)-self.H
+        ],(k1,k2))
+        self.k1=k1k2[0]
+        self.k2=k1k2[1]
         
     def val(self,u,v):
         return tuple(x.subs(self.u,u).subs(self.v,v).evalf() for x in self.p)
 
     def e_val(self,u,v):
         return tuple(x.subs(self.u,u).subs(self.v,v).evalf() for x in self.e)
+    
+    def I(self,du,dv):
+        return self.E*du*du + 2*self.F*du*dv + self.G*dv*dv
+    
+    def II(self,du,dv):
+        return self.L*du*du + 2*self.M*du*dv + self.N*dv*dv
+    
+    def III(self,du,dv):
+        return (-self.K*self.I(du,dv)+2*self.H*self.II(du,dv)).simplify()
 
     
     
