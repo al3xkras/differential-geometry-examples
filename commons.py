@@ -42,10 +42,10 @@ class Surface:
         
         k1k2=sp.solve([
             k1*k2-self.K,
-            2*(k1+k2)-self.H
+            (k1+k2)-2*self.H
         ],(k1,k2))
-        self.k1=k1k2[0]
-        self.k2=k1k2[1]
+        self.k1=k1k2[0][0]
+        self.k2=k1k2[0][1]
         
     def val(self,u,v):
         return tuple(x.subs(self.u,u).subs(self.v,v).evalf() for x in self.p)
@@ -61,6 +61,50 @@ class Surface:
     
     def III(self,du,dv):
         return (-self.K*self.I(du,dv)+2*self.H*self.II(du,dv)).simplify()
+    
+    def principal_directions(self,u0,v0):
+        k1,k2=self.k1,self.k2
+        
+        E,F,G,L,M,N=self.E,self.F,self.G,self.L,self.M,self.N
+        k1,k2,E,F,G,L,M,N=[m.subs(self.u,u0).subs(self.v,v0) for m in [k1,k2,E,F,G,L,M,N]]
+        
+        a,b=sp.symbols("a,b")
+        #II(w1) = k1; II(w2) = k2
+        #E(a,b) da da + 2 F da db + G db db = k1
+        #E(a,b) (da/du)**2 * dudu + ... = k1
+        
+        p_u=sp.Array(self.p_u).subs(self.u,u0).subs(self.v,v0)
+        p_v=sp.Array(self.p_v).subs(self.u,u0).subs(self.v,v0)
+        w=sp.solve([
+            L*a + M*b -k1*(E*a + F*b),
+            M*a + N*b -k1*(F*a + G*b),
+            np.dot(a*p_u+b*p_v,a*p_u+b*p_v)-1
+        ],(a,b))
+        
+        w1=w[0][0]*p_u+w[0][1]*p_v
+        w2=w[1][0]*p_u+w[1][1]*p_v
+        return w1,w2
+    
+
+class SurfaceCurve:
+    def __init__(self, u,v,s, surface, curve:list):
+        self.u=u
+        self.v=v
+        if isinstance(surface,list):
+            self.surface=Surface(u,v,surface)
+        else:
+            assert surface.u==u and surface.v==v
+            self.surface=surface
+        # u(s), v(s)
+        self.curve=curve
+    
+    def normal_curvature(self):
+        pass
+    
+    def geodesic_curvature(self):
+        pass
+    
+    
 
     
     
