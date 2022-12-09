@@ -34,8 +34,8 @@ class Surface:
         self.L=L
         self.M=M
         self.N=N
-        self.K = (L*N-M**2)/(E*G-F**2)
-        self.H = (E*N+G*L-2*F*M)/(2*E*G-2*F**2)
+        self.K = ((L*N-M**2)/(E*G-F**2)).simplify()
+        self.H = ((E*N+G*L-2*F*M)/(2*E*G-2*F**2)).simplify()
         self.K=self.K.simplify()
         self.H=self.H.simplify()
         k1,k2=sp.symbols("k1,k2")
@@ -44,8 +44,8 @@ class Surface:
             k1*k2-self.K,
             (k1+k2)-2*self.H
         ],(k1,k2))
-        self.k1=k1k2[0][0]
-        self.k2=k1k2[0][1]
+        self.k1=k1k2[0][0].simplify()
+        self.k2=k1k2[0][1].simplify()
         
     def val(self,u,v):
         return tuple(x.subs(self.u,u).subs(self.v,v).evalf() for x in self.p)
@@ -69,43 +69,63 @@ class Surface:
         k1,k2,E,F,G,L,M,N=[m.subs(self.u,u0).subs(self.v,v0) for m in [k1,k2,E,F,G,L,M,N]]
         
         a,b=sp.symbols("a,b")
-        #II(w1) = k1; II(w2) = k2
-        #E(a,b) da da + 2 F da db + G db db = k1
-        #E(a,b) (da/du)**2 * dudu + ... = k1
         
         p_u=sp.Array(self.p_u).subs(self.u,u0).subs(self.v,v0)
         p_v=sp.Array(self.p_v).subs(self.u,u0).subs(self.v,v0)
-        w=sp.solve([
+        w1=sp.nonlinsolve([
             L*a + M*b -k1*(E*a + F*b),
             M*a + N*b -k1*(F*a + G*b),
             np.dot(a*p_u+b*p_v,a*p_u+b*p_v)-1
         ],(a,b))
+        w2=sp.nonlinsolve([
+            L*a + M*b -k2*(E*a + F*b),
+            M*a + N*b -k2*(F*a + G*b),
+            np.dot(a*p_u+b*p_v,a*p_u+b*p_v)-1
+        ],(a,b))
         
-        w1=w[0][0]*p_u+w[0][1]*p_v
-        w2=w[1][0]*p_u+w[1][1]*p_v
-        return w1,w2
+        _w1=w1.args[0][0]*p_u+w1.args[0][1]*p_v
+        _w2=w2.args[1][0]*p_u+w2.args[1][1]*p_v
+        return _w1.simplify(),_w2.simplify()
     
+    def find_umbilic_points(self):
+        sols=sp.solve([
+            self.k1-self.k2
+        ],(self.u,self.v))
+        return sols
+    
+
 
 class SurfaceCurve:
     def __init__(self, u,v,s, surface, curve:list):
         self.u=u
         self.v=v
+        self.s=s
         if isinstance(surface,list):
             self.surface=Surface(u,v,surface)
         else:
             assert surface.u==u and surface.v==v
             self.surface=surface
-        # u(s), v(s)
-        self.curve=curve
+        #p = p(u(s), v(s)) - a surface curve
+        self.curve_param=curve
+        self.curve=[x.subs(u,curve[0]).subs(v,curve[1]) for x in self.surface.p]
+        
+        self.d2pdiffs2=sp.Array([diff(diff(self.curve[i],s),s) for i in range(3)]).simplify()
     
-    def normal_curvature(self):
-        pass
+    def normal_curvature_vec(self):
+        dudiffs=diff(self.curve[0],self.s)
+        dvdiffs=diff(self.curve[1],self.s)
+        L,M,N=self.surface.L,self.surface.M,self.surface.N
+        L,M,N=[x.subs(u,self.curve_param[0]).subs(v,self.curve_param[1]).simplify() for x in [L,M,N]]
+        k_n = (L*dudiffs**2+2*M*dudiffs*dvdiffs+N*dvdiffs**2).simplify()
+        return (sp.Array(self.surface.e)*k_n).simplify()
     
-    def geodesic_curvature(self):
-        pass
+    def geodesic_curvature_vec(self):
+        s=self.s
+        K_n=self.normal_curvature_vec()
+        return (self.d2pdiffs2-K_n).simplify()
     
-    
-
+    def curvature_vectors(self):
+        return self.normal_curvature_vec(),self.geodesic_curvature_vec()
     
     
     
