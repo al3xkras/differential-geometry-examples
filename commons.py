@@ -112,6 +112,7 @@ class SurfaceCurve:
         self.d2pdiffs2=sp.Array([diff(diff(self.curve[i],s),s) for i in range(3)]).simplify()
     
     def normal_curvature_vec(self):
+        u,v=self.u,self.v
         dudiffs=diff(self.curve[0],self.s)
         dvdiffs=diff(self.curve[1],self.s)
         L,M,N=self.surface.L,self.surface.M,self.surface.N

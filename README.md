@@ -1,1 +1,1 @@
-Origin: book - Kobayashi, differetial geometry
+Origin: book - Kobayashi, differential geometry
