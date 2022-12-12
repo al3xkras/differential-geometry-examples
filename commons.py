@@ -349,4 +349,58 @@ class TangentVectorDiffOp(DifferentialOperator):
         dvdt=diff(v_t,t)
         return (dudt*diff(fun,self.u)+dvdt*diff(fun,self.v)).subs(self.u,u_t).subs(self.v,v_t)
     
+
+class CovariantDeriv:
+    def __init__(self,surface_curve:SurfaceCurve):
+        self.surface_curve=surface_curve
+        self.curve=self.surface_curve.curve_param
+        self.u=self.surface_curve.u
+        self.v=self.surface_curve.v
+        #Any parameterization. Not necesarilly by distance.
+        self.t=self.surface_curve.s
+        self.surface=self.surface_curve.surface
+        self.ort=MethodOfOrthonormalFrames(self.surface)
+        self.W_u,self.W_v=self.ort.calc_mat_W()
+        self.e1=sp.Array(self.ort.e1)
+        self.e2=sp.Array(self.ort.e2)
+        self.e3=sp.Array(self.ort.e3)
+        self.e1,self.e2,self.e3=[(x/sp.sqrt(np.dot(x,x))).simplify() for x in [self.e1,self.e2,self.e3]]
+        
+    def covariant_deriv(self,X):
+        #X = X[0]*surface.e1 + X[1]*surface.e2
+        
+        #Covariant deriv <=> the tangent vector
+        curve=self.curve
+        t=self.t
+        xi1,xi2=X
+        w12u,w21u=self.W_u[0,1],self.W_u[1,0]
+        w12v,w21v=self.W_v[0,1],self.W_v[1,0]
+        u_t,v_t=self.surface_curve.curve_param
+        e1,e2=sp.Array(self.e1),sp.Array(self.e2)
+        w12u,w21u,w12v,w21v,e1,e2=[x.subs(self.u,u_t).subs(self.v,v_t).simplify() for x in [w12u,w21u,w12v,w21v,e1,e2]]
+        dxi1dt=diff(xi1,t)
+        dxi2dt=diff(xi2,t)
+        #u12/dt = (a*du+b*dv)/dt = a*u' + b*v'
+        return ((dxi1dt+xi2*(w21u*diff(u_t,t)+w21v*diff(v_t,t)))*e1 + \
+                (dxi2dt+xi1*(w12u*diff(u_t,t)+w12v*diff(v_t,t)))*e2).simplify()
+
+    def tangent_vector(self,X):
+        return self.covariant_deriv(X)
+    
+    def normal_vector(self,X):
+        curve=self.curve
+        #A_X
+        t=self.t
+        xi1,xi2=X
+        w13u=self.W_u[0,2]
+        w13v=self.W_v[0,2]
+        u_t,v_t=self.surface_curve.curve_param
+        e3=self.e3
+        w13u,w13v,e3=[x.subs(self.u,u_t).subs(self.v,v_t).simplify() for x in [w13u,w13v,e3]]
+        #u12/dt = (a*du+b*dv)/dt = a*u' + b*v'
+        return ((xi1*(w13u*diff(u_t,t)+w13v*diff(v_t,t))+ \
+                xi2*(w13u*diff(u_t,t)+w13v*diff(v_t,t)))*e3).simplify()
+    
+    def X_deriv(self,X):
+        return self.tangent_vector(X)+self.normal_vector(X)
     
