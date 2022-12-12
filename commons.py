@@ -280,5 +280,73 @@ class StructureEquations:
         """
         return self.surface.K*self.A.det()*self.duAdv
     
-        
+
+    
+def get_dual_base(surface:Surface):
+    #The first fundamental form ds^2 of the surface
+    #should be positive definite <=> (ds^2 is a Riemann metrics)
+    u=surface.u
+    v=surface.v
+    ort=MethodOfOrthonormalFrames(surface)
+    A=ort.calc_mat_A()
+    B=A.inv()
+    th1,th2=ort.calc_thetas()
+    # e1 = [a1,b1] = a1 * d/du + b1*d/dv
+    # e2 = [a2,b2] = a2 * d/du + b2*d/dv
+    return sp.Array([B[0,0],B[0,1]]).simplify(),sp.Array([B[1,0],B[1,1]]).simplify()
+
+
+
+class DifferentialOperator:
+    def __init__(self,u,v,l_u,l_v):
+        self.u,self.v=u,v
+        d_du,d_dv=sp.symbols("d_du,d_dv")
+        self.l_u=l_u
+        self.l_v=l_v
+    
+    def to_array(self):
+        return sp.Array([self.l_u,self.l_v])
+    
+    def inner_product_dual_base(self,other):
+        assert isinstance(other,DifferentialOperator)
+        #self and other are expressed in the from of the dual base
+        # (e1,e2):
+        # self = l_u*e1+l_v*e2
+        # other = other.l_u*e1+other.l_v*e2
+        return self.l_u*other.l_u+self.l_v*other.l_v
+    
+    def length(self):
+        #self should be expressed in the from of the dual base
+        # (e1,e2):
+        # self = l_u*e1+l_v*e2
+        return sp.sqrt(self.inner_product_dual_base(self)).simplify()
+    
+    def one_form_product(self,one_form):
+        du,dv=one_form[:2]
+        form=one_form[2]
+        return self.l_u*form.subs(du,1).subs(dv,0) + \
+                self.l_v*form.subs(du,0).subs(dv,1)
+
+
+
+class TangentVectorDiffOp(DifferentialOperator):
+    def __init__(self,u,v,vector):
+        self.u=u
+        self.v=v
+        self.u0,self.v0=vector[0]
+        u1,v1=vector[1]
+        self.l_u,self.l_v=u1-self.u0,v1-self.v0
+        super().__init__(u,v,self.l_u,self.l_v)
+    
+    def directional_derivative(self,fun):
+        return self.l_u*diff(fun,self.u)+self.l_v*diff(fun,self.v)
+    
+    def differentiate_along_curve(self,fun,curve):
+        t=curve[0]
+        u_t=curve[1] #u(t)
+        v_t=curve[2] #v(t)
+        dudt=diff(u_t,t)
+        dvdt=diff(v_t,t)
+        return (dudt*diff(fun,self.u)+dvdt*diff(fun,self.v)).subs(self.u,u_t).subs(self.v,v_t)
+    
     
