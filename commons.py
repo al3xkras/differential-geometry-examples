@@ -28,9 +28,9 @@ class Surface:
         e_mod=sp.sqrt(np.dot(e,e))
         self.e=[(x/e_mod).simplify() for x in e]
         
-        L=np.dot(self.p_uu,self.e)
-        M=np.dot(self.p_uv,self.e)
-        N=np.dot(self.p_vv,self.e)
+        L=np.dot(self.p_uu,self.e).simplify()
+        M=np.dot(self.p_uv,self.e).simplify()
+        N=np.dot(self.p_vv,self.e).simplify()
         self.L=L
         self.M=M
         self.N=N
@@ -92,6 +92,45 @@ class Surface:
             self.k1-self.k2
         ],(self.u,self.v))
         return sols
+    
+    def find_christoffels_symbols(self):
+        x_u,y_u,z_u=self.p_u
+        x_v,y_v,z_v=self.p_v
+        x_e,y_e,z_e=self.e
+        x_uu,y_uu,z_uu=self.p_uu
+        x_uv,y_uv,z_uv=self.p_uv
+        x_vv,y_vv,z_vv=self.p_vv
+        L,M,N=self.L,self.M,self.N
+        
+        r_uuu,r_uuv,r_uvu,r_uvv,r_vuu,r_vuv,r_vvu,r_vvv=sp.symbols("r_uuu,r_uuv,r_uvu,r_uvv,r_vuu,r_vuv,r_vvu,r_vvv")
+        syms=(r_uuu,r_uuv,r_uvu,r_uvv,r_vuu,r_vuv,r_vvu,r_vvv)
+        s1=sp.linsolve([
+            r_uuu*x_u+r_uuv*x_v+L*x_e-x_uu,
+            r_uuu*y_u+r_uuv*y_v+L*y_e-y_uu,
+            r_uuu*z_u+r_uuv*z_v+L*z_e-z_uu
+        ],(r_uuu,r_uuv))
+        s2=sp.linsolve([
+            r_uvu*x_u+r_uvv*x_v+M*x_e-x_uv,
+            r_uvu*y_u+r_uvv*y_v+M*y_e-y_uv,
+            r_uvu*z_u+r_uvv*z_v+M*z_e-z_uv
+        ],(r_uvu,r_uvv))
+        s3=sp.linsolve([
+            r_vvu*x_u+r_vvv*x_v+N*x_e-x_vv,
+            r_vvu*y_u+r_vvv*y_v+N*y_e-y_vv,
+            r_vvu*z_u+r_vvv*z_v+N*z_e-z_vv
+        ],(r_vvu,r_vvv))
+        sols=[
+            s1.args[0][0],
+            s1.args[0][1],
+            s2.args[0][0],
+            s2.args[0][1],
+            s2.args[0][0],
+            s2.args[0][1],
+            s3.args[0][0],
+            s3.args[0][1],
+        ]
+        return dict((str(syms[i])[2:],sols[i].simplify()) for i in range(len(syms)))
+        
     
 
 
