@@ -405,41 +405,78 @@ class CovariantDeriv:
         self.e3=sp.Array(self.ort.e3)
         self.e1,self.e2,self.e3=[(x/sp.sqrt(np.dot(x,x))).simplify() for x in [self.e1,self.e2,self.e3]]
         
-    def covariant_deriv(self,X):
+    def covariant_deriv(self,e1=None,e2=None):
         #X = X[0]*surface.e1 + X[1]*surface.e2
         
         #Covariant deriv <=> the tangent vector
+        t=self.t
+        u_t,v_t=self.surface_curve.curve_param
+        
+        e1,e2,e3=self.e1,self.e2,self.e3
+        e1,e2,e3=[x.subs(self.u,u_t).subs(self.v,v_t).simplify() for x in [e1,e2,e3]]
+        
+        xi1,xi2,xi3=self.calc_X_deriv_xi()
+        
+        return xi1*e1+xi2*e2
+    
+    def calc_X_deriv_xi(self):
+        t=self.t
+        xi1,xi2,xi3 = sp.symbols("xi1,xi2,xi3")
+        u_t,v_t=self.surface_curve.curve_param
+        
+        curve=[f.subs(self.u,u_t).subs(self.v,v_t).simplify() for f in self.surface.p]
+        
+        X = sp.Array([diff(f,t) for f in curve])
+        X_d = sp.Array([diff(f,t) for f in X])
+        e1,e2,e3=self.e1,self.e2,self.e3
+        e1,e2,e3=[x.subs(self.u,u_t).subs(self.v,v_t).simplify() for x in [e1,e2,e3]]
+        
+        sols=sp.solve([xi1*e1[i]+xi2*e2[i]+xi3*e3[i]-X_d[i] for i in range(3)],
+                      (xi1,xi2,xi3))
+        
+        return sols[xi1],sols[xi2],sols[xi3]
+
+    def tangent_vector(self):
+        return self.covariant_deriv()
+    
+    def normal_vector(self):
+        t=self.t
+        u_t,v_t=self.surface_curve.curve_param
+        
+        e1,e2,e3=self.e1,self.e2,self.e3
+        e1,e2,e3=[x.subs(self.u,u_t).subs(self.v,v_t).simplify() for x in [e1,e2,e3]]
+        
+        xi1,xi2,xi3=self.calc_X_deriv_xi()
+        
+        return xi3*e3
+    
+    def X_deriv(self):
+        t=self.t
+        u_t,v_t=self.surface_curve.curve_param
+        curve=[f.subs(self.u,u_t).subs(self.v,v_t).simplify() for f in self.surface.p]
+        return sp.Array([diff(diff(f,t)) for f in curve])
+    
+    def problem_3_4_2_eq(self):
         curve=self.curve
         t=self.t
-        xi1,xi2=X
+        xi1,xi2=self.calc_xi_i()
+        A=self.ort.calc_mat_A()
+        B=A.inv()
+        
         w12u,w21u=self.W_u[0,1],self.W_u[1,0]
         w12v,w21v=self.W_v[0,1],self.W_v[1,0]
         u_t,v_t=self.surface_curve.curve_param
         e1,e2=sp.Array(self.e1),sp.Array(self.e2)
-        w12u,w21u,w12v,w21v,e1,e2=[x.subs(self.u,u_t).subs(self.v,v_t).simplify() for x in [w12u,w21u,w12v,w21v,e1,e2]]
+        w12u,w21u,w12v,w21v,e1,e2,xi1,xi2=[x.subs(self.u,u_t).subs(self.v,v_t).simplify() for x in 
+                                           [w12u,w21u,w12v,w21v,e1,e2,xi1,xi2]]
         dxi1dt=diff(xi1,t)
         dxi2dt=diff(xi2,t)
-        #u12/dt = (a*du+b*dv)/dt = a*u' + b*v'
-        return ((dxi1dt+xi2*(w21u*diff(u_t,t)+w21v*diff(v_t,t)))*e1 + \
-                (dxi2dt+xi1*(w12u*diff(u_t,t)+w12v*diff(v_t,t)))*e2).simplify()
-
-    def tangent_vector(self,X):
-        return self.covariant_deriv(X)
-    
-    def normal_vector(self,X):
-        curve=self.curve
-        #A_X
-        t=self.t
-        xi1,xi2=X
-        w13u=self.W_u[0,2]
-        w13v=self.W_v[0,2]
-        u_t,v_t=self.surface_curve.curve_param
-        e3=self.e3
-        w13u,w13v,e3=[x.subs(self.u,u_t).subs(self.v,v_t).simplify() for x in [w13u,w13v,e3]]
-        #u12/dt = (a*du+b*dv)/dt = a*u' + b*v'
-        return ((xi1*(w13u*diff(u_t,t)+w13v*diff(v_t,t))+ \
-                xi2*(w13u*diff(u_t,t)+w13v*diff(v_t,t)))*e3).simplify()
-    
-    def X_deriv(self,X):
-        return self.tangent_vector(X)+self.normal_vector(X)
+        dudt,dvdt=diff(u_t,t),diff(v_t,t)
+        g=self.surface.find_christoffels_symbols()
+        
+        
+        d_du,d_dv=sp.symbols("d_du,d_dv")
+        return dxi1dt+d_du*(g["uuu"]*xi1*dudt+g["uvu"]*xi1*dvdt+g["vuu"]*xi2*dudt+g["vvu"]*xi2*dvdt)+\
+               dxi2dt+d_dv*(g["uuv"]*xi1*dudt+g["uvv"]*xi1*dvdt+g["vuv"]*xi2*dudt+g["vvv"]*xi2*dvdt)
+        
     
